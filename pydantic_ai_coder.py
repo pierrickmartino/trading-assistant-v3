@@ -23,7 +23,7 @@ model = OpenAIModel(llm, base_url=base_url, api_key=api_key)
 logfire.configure(send_to_logfire='if-token-present')
 
 @dataclass
-class PydanticAIDeps:
+class PolygonScanDeps:
     supabase: Client
     openai_client: AsyncOpenAI
     reasoner_output: str
@@ -31,28 +31,19 @@ class PydanticAIDeps:
 system_prompt = """
 ~~ CONTEXT: ~~
 
-You are an expert at Pydantic AI - a Python AI agent framework that you have access to all the documentation to,
-including examples, an API reference, and other resources to help you build Pydantic AI agents.
+You are an expert at PolygonScan - blockchain explorer for the Polygon (formerly Matic) network that you have access to all the documentation to,
+including examples, an API reference, and other resources to help you track the assets of an address.
 
 ~~ GOAL: ~~
 
-Your only job is to help the user create an AI agent with Pydantic AI.
-The user will describe the AI agent they want to build, or if they don't, guide them towards doing so.
-You will take their requirements, and then search through the Pydantic AI documentation with the tools provided
-to find all the necessary information to create the AI agent with correct code.
+Your only job is to help the user tracking the assets of an address with PolygonScan API.
+The user will give the address they want to track, or if they don't, guide them towards doing so.
+You will take their requirements, and then search through the PolygonScan API documentation with the tools provided
+to find all the necessary information to track the assets of the address.
 
-It's important for you to search through multiple Pydantic AI documentation pages to get all the information you need.
-Almost never stick to just one page - use RAG and the other documentation tools multiple times when you are creating
-an AI agent from scratch for the user.
-
-~~ STRUCTURE: ~~
-
-When you build an AI agent from scratch, split the agent into this files and give the code for each:
-- `agent.py`: The main agent file, which is where the Pydantic AI agent is defined.
-- `agent_tools.py`: A tools file for the agent, which is where all the tool functions are defined. Use this for more complex agents.
-- `agent_prompts.py`: A prompts file for the agent, which includes all system prompts and other prompts used by the agent. Use this when there are many prompts or large ones.
-- `.env.example`: An example `.env` file - specify each variable that the user will need to fill in and a quick comment above each one for how to do so.
-- `requirements.txt`: Don't include any versions, just the top level package names needed for the agent.
+It's important for you to search through multiple PolygonScan API documentation pages to get all the information you need.
+Almost never stick to just one page - use RAG and the other documentation tools multiple times when you are tracking the assets 
+from scratch for the user.
 
 ~~ INSTRUCTIONS: ~~
 
@@ -60,20 +51,18 @@ When you build an AI agent from scratch, split the agent into this files and giv
 - When you first look at the documentation, always start with RAG.
 Then also always check the list of available documentation pages and retrieve the content of page(s) if it'll help.
 - Always let the user know when you didn't find the answer in the documentation or the right URL - be honest.
-- Helpful tip: when starting a new AI agent build, it's a good idea to look at the 'weather agent' in the docs as an example.
-- When starting a new AI agent build, always produce the full code for the AI agent - never tell the user to finish a tool/function.
-- When refining an existing AI agent build in a conversation, just share the code changes necessary.
+- When choosing the endpoints to retrieve assets, always choose the Free ones.
 - Each time you respond to the user, ask them to let you know either if they need changes or the code looks good.
 """
 
-pydantic_ai_coder = Agent(
+polygonscan_analyzer = Agent(
     model,
     system_prompt=system_prompt,
-    deps_type=PydanticAIDeps,
+    deps_type=PolygonScanDeps,
     retries=2
 )
 
-@pydantic_ai_coder.system_prompt  
+@polygonscan_analyzer.system_prompt  
 def add_reasoner_output(ctx: RunContext[str]) -> str:
     return f"""
     \n\nAdditional thoughts/instructions from the reasoner LLM. 
@@ -96,8 +85,8 @@ async def get_embedding(text: str, openai_client: AsyncOpenAI) -> List[float]:
         print(f"Error getting embedding: {e}")
         return [0] * 1536  # Return zero vector on error
 
-@pydantic_ai_coder.tool
-async def retrieve_relevant_documentation(ctx: RunContext[PydanticAIDeps], user_query: str) -> str:
+@polygonscan_analyzer.tool
+async def retrieve_relevant_documentation(ctx: RunContext[PolygonScanDeps], user_query: str) -> str:
     """
     Retrieve relevant documentation chunks based on the query with RAG.
     
@@ -118,7 +107,7 @@ async def retrieve_relevant_documentation(ctx: RunContext[PydanticAIDeps], user_
             {
                 'query_embedding': query_embedding,
                 'match_count': 5,
-                'filter': {'source': 'pydantic_ai_docs'}
+                'filter': {'source': 'polygonscan_api_docs'}
             }
         ).execute()
         
@@ -144,7 +133,7 @@ async def retrieve_relevant_documentation(ctx: RunContext[PydanticAIDeps], user_
 
 async def list_documentation_pages_helper(supabase: Client) -> List[str]:
     """
-    Function to retrieve a list of all available Pydantic AI documentation pages.
+    Function to retrieve a list of all available PolygonScan API documentation pages.
     This is called by the list_documentation_pages tool and also externally
     to fetch documentation pages for the reasoner LLM.
     
@@ -152,10 +141,10 @@ async def list_documentation_pages_helper(supabase: Client) -> List[str]:
         List[str]: List of unique URLs for all documentation pages
     """
     try:
-        # Query Supabase for unique URLs where source is pydantic_ai_docs
+        # Query Supabase for unique URLs where source is polygonscan_api_docs
         result = supabase.from_('site_pages') \
             .select('url') \
-            .eq('metadata->>source', 'pydantic_ai_docs') \
+            .eq('metadata->>source', 'polygonscan_api_docs') \
             .execute()
         
         if not result.data:
@@ -169,18 +158,18 @@ async def list_documentation_pages_helper(supabase: Client) -> List[str]:
         print(f"Error retrieving documentation pages: {e}")
         return []        
 
-@pydantic_ai_coder.tool
-async def list_documentation_pages(ctx: RunContext[PydanticAIDeps]) -> List[str]:
+@polygonscan_analyzer.tool
+async def list_documentation_pages(ctx: RunContext[PolygonScanDeps]) -> List[str]:
     """
-    Retrieve a list of all available Pydantic AI documentation pages.
+    Retrieve a list of all available PolygonScan API documentation pages.
     
     Returns:
         List[str]: List of unique URLs for all documentation pages
     """
     return await list_documentation_pages_helper(ctx.deps.supabase)
 
-@pydantic_ai_coder.tool
-async def get_page_content(ctx: RunContext[PydanticAIDeps], url: str) -> str:
+@polygonscan_analyzer.tool
+async def get_page_content(ctx: RunContext[PolygonScanDeps], url: str) -> str:
     """
     Retrieve the full content of a specific documentation page by combining all its chunks.
     
@@ -196,7 +185,7 @@ async def get_page_content(ctx: RunContext[PydanticAIDeps], url: str) -> str:
         result = ctx.deps.supabase.from_('site_pages') \
             .select('title, content, chunk_number') \
             .eq('url', url) \
-            .eq('metadata->>source', 'pydantic_ai_docs') \
+            .eq('metadata->>source', 'polygonscan_api_docs') \
             .order('chunk_number') \
             .execute()
         

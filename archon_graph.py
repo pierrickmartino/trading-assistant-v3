@@ -17,7 +17,7 @@ from pydantic_ai.messages import (
     ModelMessagesTypeAdapter
 )
 
-from pydantic_ai_coder import pydantic_ai_coder, PydanticAIDeps, list_documentation_pages_helper
+from pydantic_ai_coder import polygonscan_analyzer, PolygonScanDeps, list_documentation_pages_helper
 
 # Load environment variables
 load_dotenv()
@@ -42,7 +42,7 @@ router_agent = Agent(
 
 end_conversation_agent = Agent(  
     OpenAIModel(primary_llm_model, base_url=base_url, api_key=api_key),
-    system_prompt='Your job is to end a conversation for tracking the assets of an address by giving the result of your analysis and they saying a nice goodbye to the user.',  
+    system_prompt='Your job is to end a conversation for tracking the assets of an address by giving the result of your analysis and then saying a nice goodbye to the user.',  
 )
 
 openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -68,16 +68,16 @@ async def define_scope_with_reasoner(state: AgentState):
     User AI Agent Request: {state['latest_user_message']}
     
     Create detailed scope document for the AI agent including:
-    - Architecture diagram
-    - Core components
-    - External dependencies
-    - Testing strategy
+    - API endpoints
+    - Limitations
+    - Optimization
+    - Asset calculation
 
     Also based on these documentation pages available:
 
     {documentation_pages_str}
 
-    Include a list of documentation pages that are relevant to creating this agent for the user in the scope document.
+    Include a list of documentation pages that are relevant to track the assets for the user in the scope document.
     """
 
     result = await reasoner.run(prompt)
@@ -95,13 +95,13 @@ async def define_scope_with_reasoner(state: AgentState):
 # Coding Node with Feedback Handling
 async def coder_agent(state: AgentState, writer):    
     # Prepare dependencies
-    deps = PydanticAIDeps(
+    deps = PolygonScanDeps(
         supabase=supabase,
         openai_client=openai_client,
         reasoner_output=state['scope']
     )
 
-    # Get the message history into the format for Pydantic AI
+    # Get the message history into the format for PolygonScan API
     message_history: list[ModelMessage] = []
     for message_row in state['messages']:
         message_history.extend(ModelMessagesTypeAdapter.validate_json(message_row))
@@ -109,10 +109,10 @@ async def coder_agent(state: AgentState, writer):
     # Run the agent in a stream
     if is_ollama:
         writer = get_stream_writer()
-        result = await pydantic_ai_coder.run(state['latest_user_message'], deps=deps, message_history= message_history)
+        result = await polygonscan_analyzer.run(state['latest_user_message'], deps=deps, message_history= message_history)
         writer(result.data)
     else:
-        async with pydantic_ai_coder.run_stream(
+        async with polygonscan_analyzer.run_stream(
             state['latest_user_message'],
             deps=deps,
             message_history= message_history
@@ -155,7 +155,7 @@ async def route_user_message(state: AgentState):
 
 # End of conversation agent to give instructions for executing the agent
 async def finish_conversation(state: AgentState, writer):    
-    # Get the message history into the format for Pydantic AI
+    # Get the message history into the format for PolygonScan API
     message_history: list[ModelMessage] = []
     for message_row in state['messages']:
         message_history.extend(ModelMessagesTypeAdapter.validate_json(message_row))

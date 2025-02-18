@@ -232,7 +232,7 @@ def get_polygonscan_api_docs_urls() -> List[str]:
         return []
 
 async def main():
-    # Get URLs from Pydantic AI docs
+    # Get URLs from PolygonScan API docs
     urls = get_polygonscan_api_docs_urls()
     if not urls:
         print("No URLs found to crawl")
