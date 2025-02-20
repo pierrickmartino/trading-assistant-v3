@@ -24,7 +24,6 @@ def get_balance(address):
         raise Exception("Error fetching balance: " + data['message'])
 
 def get_token_transfers(address):
-    print(API_KEY)
     response = requests.get(API_URL, params={
         'module': 'account',
         'action': 'tokentx',
