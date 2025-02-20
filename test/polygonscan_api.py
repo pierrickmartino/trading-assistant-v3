@@ -8,6 +8,21 @@ load_dotenv()
 API_URL = "https://api.polygonscan.com/api"
 API_KEY = os.getenv('POLYGONSCAN_API_KEY')
 
+def get_balance(address):
+    response = requests.get(API_URL, params={
+        'module': 'account',
+        'action': 'balance',
+        'tag': 'latest',
+        'address': address,
+        'apikey': API_KEY
+    })
+    data = response.json()
+
+    if data['status'] == '1':
+        return int(data['result'])
+    else:
+        raise Exception("Error fetching balance: " + data['message'])
+
 def get_token_transfers(address):
     print(API_KEY)
     response = requests.get(API_URL, params={

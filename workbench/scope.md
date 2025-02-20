@@ -1,101 +1,113 @@
 # Wallet Address Tracker Scope Document
 
-## Introduction
-This document outlines the scope for developing a Wallet Address Tracker that will search the Polygon network using the PolygonScan API. The tracker will identify different tokens held by a specified wallet address where the total quantity of each token is greater than 0.
+## 1. Overview
+The Wallet Address Tracker is designed to retrieve and display the balance of a specific wallet in the Polygon network, particularly focusing on the POL token and other contract addresses. It filters out any addresses with a balance equal to zero, providing a concise summary of the user's assets.
 
-## API Endpoints
+---
 
-### 1. Get Token Balance for an Address
-- **Endpoint:** `https://api.polygonscan.com/api`
-  
-#### Usage and Query Parameters:
-- **`module`**: Set to `account`
-- **`action`**: Set to `tokenbalance`
-- **`contractaddress`**: The contract address of the token (e.g. ERC-20 token).
-- **`address`**: The wallet address you want to check.
-- **`tag`**: (Optional) Defaults to "latest".
-- **`apikey`**: Your valid API key for PolygonScan.
+## 2. API Endpoints
 
-#### Example Request:
-```
-https://api.polygonscan.com/api?module=account&action=tokenbalance&contractaddress=0x...&address=0x...&tag=latest&apikey=YourAPIKey
-```
+### 2.1. Account Balance Endpoint
+- **Endpoint**: `https://api.polygonscan.com/api`
+- **Parameters**:
+  - `module`: `account`
+  - `action`: `balance`
+  - `address`: *(string)* The wallet address to query.
+  - `tag`: *(string)* Use "latest" for the most recent balance.
+  - `apikey`: *(string)* Your PolygonScan API key.
 
-#### Response JSON Format:
-```json
-{
-  "status": "1",
-  "message": "OK",
-  "result": "1000000000000000000"  // Token balance in the smallest unit
-}
-```
+- **Example Request**:
+  ```
+  https://api.polygonscan.com/api?module=account&action=balance&address=0xYourWalletAddress&tag=latest&apikey=YourAPIKey
+  ```
 
-### 2. Get All ERC-20 Token Transfers for an Address
-- **Endpoint:** `https://api.polygonscan.com/api`
-  
-#### Usage and Query Parameters:
-- **`module`**: Set to `account`
-- **`action`**: Set to `tokentx`
-- **`address`**: The wallet address you want to check.
-- **`startblock`**: (Optional) Start block number. Defaults to 0.
-- **`endblock`**: (Optional) End block number. Defaults to 99999999.
-- **`sort`**: Sort direction (asc|desc).
-- **`apikey`**: Your valid API key for PolygonScan.
+- **Response JSON Format**:
+  ```json
+  {
+    "status": "1",
+    "message": "OK",
+    "result": "1000000000000000000"  // Balance in Wei
+  }
+  ```
 
-#### Example Request:
-```
-https://api.polygonscan.com/api?module=account&action=tokentx&address=0x...&sort=asc&apikey=YourAPIKey
-```
+### 2.2. Token Balances Endpoint
+- **Endpoint**: `https://api.polygonscan.com/api`
+- **Parameters**:
+  - `module`: `account`
+  - `action`: `tokenlist`
+  - `address`: *(string)* The wallet address to query.
+  - `apikey`: *(string)* Your PolygonScan API key.
 
-#### Response JSON Format:
-```json
-{
-  "status": "1",
-  "message": "OK",
-  "result": [
-    {
-      "blockNumber": "12345678",
-      "timeStamp": "1616749005",
-      "hash": "0x...",
-      "from": "0x...",
-      "to": "0x...",
-      "contractAddress": "0x...",
-      "tokenName": "TokenName",
-      "tokenSymbol": "TKN",
-      "tokenDecimal": "18",
-      "value": "1000000000000000000"
-    }
-    // More transactions
-  ]
-}
-```
+- **Example Request**:
+  ```
+  https://api.polygonscan.com/api?module=account&action=tokenlist&address=0xYourWalletAddress&apikey=YourAPIKey
+  ```
 
-## Limitations of APIs
-- Rate Limits: The free version of the PolygonScan API has strict rate limits (5 requests/sec), which can throttle performance when multiple checks are made in succession.
-- Requires API Key: All requests need a valid API key, causing potential access issues if key is compromised or used up.
-- Token Details: More specific token details (e.g., metadata, symbols) would require additional APIs or a more complex implementation where several contract addresses need to be checked.
+- **Response JSON Format**:
+  ```json
+  {
+    "status": "1",
+    "message": "OK",
+    "result": [
+      {
+        "tokenAddress": "0xTokenAddress1",
+        "tokenName": "TokenName1",
+        "tokenSymbol": "TKN1",
+        "balance": "0" // This balance will be ignored in final results
+      },
+      {
+        "tokenAddress": "0xTokenAddress2",
+        "tokenName": "TokenName2",
+        "tokenSymbol": "TKN2",
+        "balance": "5000000000000000000" // Only non-zero balances will be shown
+      }
+    ]
+  }
+  ```
 
-## Optimization for Better Performance
-- Batch Requests: If possible, batch multiple wallet addresses or token requests to reduce the number of API calls.
-- Caching Results: Store the token balances locally for repeat checks, refreshing them after a certain time period to minimize calls.
-- Asynchronous Calls: Use asynchronous programming (e.g. `asyncio` in Python) to avoid blocking whenever multiple requests are made.
+---
 
-## Asset Calculation and Aggregation
-1. Upon retrieving the balances for each token, convert the result from the smallest unit to standard denomination based on the token's decimal placements defined in the ERC-20 contract.
-2. Aggregate and count unique tokens with total quantities greater than zero.
-3. Store results in a structured format (e.g., dictionary or list of tuples) for later processing and display.
+## 3. Limitations of APIs
+- **Rate Limits**: The API may be subject to usage limits (typically 5 requests per second for public endpoints).
+- **Response Time**: Latency may occur due to network issues or API load.
+- **Data Accuracy**: The API may not always reflect real-time data due to network delays or pending transactions.
 
-## Possible Next Steps
-1. Implement a user interface to input wallet addresses and display token results.
-2. Add comprehensive error checks for API responses to handle failures gracefully.
-3. Define additional features like real-time updates for asset values and historical transaction views.
-4. Enhance functionality with reporting features for asset diversity and historical balance tracking.
+---
 
-## Relevant Documentation Pages
-1. [PolygonScan API Documentation](https://docs.polygonscan.com/)
-2. [Accounts API Endpoints](https://docs.polygonscan.com/api-endpoints/accounts)
-3. [Tokens API Endpoints](https://docs.polygonscan.com/api-endpoints/tokens)
-4. [Rate Limits Documentation](https://docs.polygonscan.com/support/rate-limits)
-5. [PolygonScan API Usage Statistics](https://docs.polygonscan.com/getting-started/viewing-api-usage-statistics)
+## 4. Optimization for Better Performance
+- **Caching Requests**: Implement caching for repeated requests to reduce API calls.
+- **Batch Requests**: If multiple wallet addresses need to be checked, consider batching requests where possible.
+- **Error Handling**: Implement retries for failures due to temporary issues.
 
-This scope document lays the groundwork for our Wallet Address Tracker project that will efficiently utilize the PolygonScan API while ensuring a good user experience.
+---
+
+## 5. Asset Calculation and Aggregation
+1. Retrieve POL balance using the balance endpoint.
+2. Retrieve all token balances using the tokenlist endpoint.
+3. Filter out all tokens with a balance of zero.
+4. Aggregate results to provide a concise list of assets and their balances.
+
+### Example Data Aggregation Flow
+- For the POL balance, convert Wei to the standard decimal format.
+- For other tokens, ensure the displayed balance aligns with the token's decimal configuration (if applicable).
+
+---
+
+## 6. Possible Next Steps
+- Implement a UI for an easy user experience.
+- Consider enabling alerts for significant balance changes.
+- Develop a feature to track historical balances over time.
+- Explore additional integration options for more comprehensive transaction tracking.
+
+---
+
+## 7. Relevant Documentation Pages
+- [PolygonScan API Overview](https://docs.polygonscan.com/getting-started/creating-an-account)
+- [Account API Endpoints](https://docs.polygonscan.com/api-endpoints/accounts)
+- [Token API Endpoints](https://docs.polygonscan.com/api-endpoints/tokens)
+- [Getting Started with the API](https://docs.polygonscan.com/getting-started/endpoint-urls)
+- [Rate Limits](https://docs.polygonscan.com/support/rate-limits)
+- [Error Messages](https://docs.polygonscan.com/support/common-error-messages)
+- [FAQ Section](https://docs.polygonscan.com/support/faq)
+
+These pages support the development and understanding of the Wallet Address Tracker, providing vital context on getting started and ongoing usage of the APIs from PolygonScan.

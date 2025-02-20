@@ -1,9 +1,16 @@
-from polygonscan_api import get_token_transfers, get_token_balances
+from polygonscan_api import get_balance, get_token_transfers, get_token_balances
 from tracker_tools import parse_token_transfers, convert_wei_to_decimal
 import os
 
 def main(wallet_address):
+
     print(f"Tracking tokens for wallet: {wallet_address}\n")
+
+    # Get POL balance
+    pol_balance = get_balance(wallet_address)
+    pol_balance_eth = convert_wei_to_decimal(pol_balance, 18)
+    
+    print(f"POL Balance: {pol_balance_eth} ETH")
 
     # Fetch token transfers
     transfers = get_token_transfers(wallet_address)
