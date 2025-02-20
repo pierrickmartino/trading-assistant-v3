@@ -31,18 +31,18 @@ is_ollama = "localhost" in base_url.lower()
 reasoner_llm_model = os.getenv('REASONER_MODEL', 'o3-mini')
 reasoner = Agent(  
     OpenAIModel(reasoner_llm_model, base_url=base_url, api_key=api_key),
-    system_prompt='You are an expert at tracking the assets of an address with PolygonScan API and defining the scope for doing so.',  
+    system_prompt='You are an expert at coding wallet address trackers in Python and defining the scope for doing so.',  
 )
 
 primary_llm_model = os.getenv('PRIMARY_MODEL', 'gpt-4o-mini')
 router_agent = Agent(  
     OpenAIModel(primary_llm_model, base_url=base_url, api_key=api_key),
-    system_prompt='Your job is to route the user message either to the end of the conversation or to continue tracking the assets of an address.',  
+    system_prompt='Your job is to route the user message either to the end of the conversation or to continue coding the wallet address tracker.',  
 )
 
 end_conversation_agent = Agent(  
     OpenAIModel(primary_llm_model, base_url=base_url, api_key=api_key),
-    system_prompt='Your job is to end a conversation for tracking the assets of an address by giving the result of your analysis and then saying a nice goodbye to the user.',  
+    system_prompt='Your job is to end a conversation for creating the wallet address tracker by giving instructions for how to execute the tracker and then saying a nice goodbye to the user.',  
 )
 
 openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -67,17 +67,20 @@ async def define_scope_with_reasoner(state: AgentState):
     prompt = f"""
     User AI Agent Request: {state['latest_user_message']}
     
-    Create detailed scope document for the AI agent including:
-    - API endpoints
-    - Limitations
-    - Optimization
-    - Asset calculation
+    Create detailed scope document for the Wallet Address Tracker including:
+    - API endpoints (Do not use API PRO endpoints)
+        - Usage and query parameters 
+        - Response JSON formats
+    - Limitations of APIs
+    - Optimization for better performance
+    - Asset calculation and aggregation
+    - Possible next steps
 
     Also based on these documentation pages available:
 
     {documentation_pages_str}
 
-    Include a list of documentation pages that are relevant to track the assets for the user in the scope document.
+    Include a list of documentation pages that are relevant to create this tracker for the user in the scope document.
     """
 
     result = await reasoner.run(prompt)
@@ -142,7 +145,7 @@ async def route_user_message(state: AgentState):
     {state['latest_user_message']}
 
     If the user wants to end the conversation, respond with just the text "finish_conversation".
-    If the user wants to continue tracking the assets of an address, respond with just the text "coder_agent".
+    If the user wants to continue coding the wallet address tracker, respond with just the text "coder_agent".
     """
 
     result = await router_agent.run(prompt)

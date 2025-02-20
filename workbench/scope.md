@@ -1,67 +1,101 @@
-# Scope Document for AI Agent: PolygonScan Asset Tracking
+# Wallet Address Tracker Scope Document
 
-## Overview
-This document outlines the scope for developing an AI agent capable of tracking the assets of a specified address using the PolygonScan API. The purpose of this agent is to facilitate asset management and provide users with a comprehensive view of their cryptocurrency holdings on the Polygon network.
+## Introduction
+This document outlines the scope for developing a Wallet Address Tracker that will search the Polygon network using the PolygonScan API. The tracker will identify different tokens held by a specified wallet address where the total quantity of each token is greater than 0.
 
-### 1. API Endpoints
-To track assets, the AI agent will leverage the following endpoints from the PolygonScan API:
+## API Endpoints
 
-- **Accounts**
-  - **`GET /api?module=account&action=balance`** - Retrieves the balance of Ether for a given address.
-  - **`GET /api?module=account&action=tokentx`** - Fetches token transaction history for an address.
-  - **`GET /api?module=account&action=tokenbalance`** - Provides the balance of a specific token for an address.
-
-- **Tokens**
-  - **`GET /api?module=token&action=getTokenInfo`** - Retrieves information about a given token using its contract address.
-  - **`GET /api?module=token&action=tokenList`** - Lists tokens available on the Polygon network.
-
-- **Stats**
-  - **`GET /api?module=stats&action=topaccounts`** - Retrieves the top accounts on the network, which can provide context for asset holdings.
-
-### 2. Limitations
-Understanding the limitations of the PolygonScan API is essential for proper implementation:
-
-- **Rate Limiting**: The API has rate limits (commonly 5 requests per second for free accounts) which may impact how frequently data can be fetched. Exceeding this limit will result in error messages or failed requests.
+### 1. Get Token Balance for an Address
+- **Endpoint:** `https://api.polygonscan.com/api`
   
-- **API Quotas**: Free-tier accounts have restricted access to certain endpoints or limited usage; advanced features require a Pro account.
+#### Usage and Query Parameters:
+- **`module`**: Set to `account`
+- **`action`**: Set to `tokenbalance`
+- **`contractaddress`**: The contract address of the token (e.g. ERC-20 token).
+- **`address`**: The wallet address you want to check.
+- **`tag`**: (Optional) Defaults to "latest".
+- **`apikey`**: Your valid API key for PolygonScan.
 
-- **Data Availability**: The API may not provide historical data for all assets, particularly new tokens that were only recently deployed.
+#### Example Request:
+```
+https://api.polygonscan.com/api?module=account&action=tokenbalance&contractaddress=0x...&address=0x...&tag=latest&apikey=YourAPIKey
+```
 
-- **Latency**: The response time for API calls can vary, and the asynchronous nature of network calls may lead to performance bottlenecks if not handled correctly.
+#### Response JSON Format:
+```json
+{
+  "status": "1",
+  "message": "OK",
+  "result": "1000000000000000000"  // Token balance in the smallest unit
+}
+```
 
-### 3. Optimization
-To ensure efficient operation of the agent, consider the following optimizations:
-
-- **Batch Requests**: Utilize batch processing for fetching data where multiple queries can be combined to reduce the number of requests made.
+### 2. Get All ERC-20 Token Transfers for an Address
+- **Endpoint:** `https://api.polygonscan.com/api`
   
-- **Caching**: Implement local caching of results to minimize redundant API calls, especially for data that doesn't change frequently.
+#### Usage and Query Parameters:
+- **`module`**: Set to `account`
+- **`action`**: Set to `tokentx`
+- **`address`**: The wallet address you want to check.
+- **`startblock`**: (Optional) Start block number. Defaults to 0.
+- **`endblock`**: (Optional) End block number. Defaults to 99999999.
+- **`sort`**: Sort direction (asc|desc).
+- **`apikey`**: Your valid API key for PolygonScan.
 
-- **Asynchronous Processing**: Use async programming techniques to handle multiple requests concurrently without blocking, thus ensuring faster data retrieval.
+#### Example Request:
+```
+https://api.polygonscan.com/api?module=account&action=tokentx&address=0x...&sort=asc&apikey=YourAPIKey
+```
 
-- **Error Handling**: Implement robust error handling and retry logic to manage rate limiting or temporary network issues.
+#### Response JSON Format:
+```json
+{
+  "status": "1",
+  "message": "OK",
+  "result": [
+    {
+      "blockNumber": "12345678",
+      "timeStamp": "1616749005",
+      "hash": "0x...",
+      "from": "0x...",
+      "to": "0x...",
+      "contractAddress": "0x...",
+      "tokenName": "TokenName",
+      "tokenSymbol": "TKN",
+      "tokenDecimal": "18",
+      "value": "1000000000000000000"
+    }
+    // More transactions
+  ]
+}
+```
 
-### 4. Asset Calculation
-To calculate a user's total assets, the following steps should be performed:
+## Limitations of APIs
+- Rate Limits: The free version of the PolygonScan API has strict rate limits (5 requests/sec), which can throttle performance when multiple checks are made in succession.
+- Requires API Key: All requests need a valid API key, causing potential access issues if key is compromised or used up.
+- Token Details: More specific token details (e.g., metadata, symbols) would require additional APIs or a more complex implementation where several contract addresses need to be checked.
 
-1. **Fetch Ethereum Balance**: Use the `balance` endpoint to get the Ether balance of the address.
-  
-2. **Fetch Token Balances**: 
-   - First, retrieve all token transactions using `tokentx` to identify all the tokens associated with the address.
-   - For each unique token instance, call the `tokenbalance` endpoint to get the current balance.
+## Optimization for Better Performance
+- Batch Requests: If possible, batch multiple wallet addresses or token requests to reduce the number of API calls.
+- Caching Results: Store the token balances locally for repeat checks, refreshing them after a certain time period to minimize calls.
+- Asynchronous Calls: Use asynchronous programming (e.g. `asyncio` in Python) to avoid blocking whenever multiple requests are made.
 
-3. **Aggregate Values**: 
-   - Sum the values of all tokens and the Ether balance to calculate the total asset value.
-   - Optionally, convert token values into a common currency (e.g., USD) using an average price feed from an external API, if needed.
+## Asset Calculation and Aggregation
+1. Upon retrieving the balances for each token, convert the result from the smallest unit to standard denomination based on the token's decimal placements defined in the ERC-20 contract.
+2. Aggregate and count unique tokens with total quantities greater than zero.
+3. Store results in a structured format (e.g., dictionary or list of tuples) for later processing and display.
 
-### Relevant Documentation Pages
-A list of documentation pages relevant to tracking assets using the PolygonScan API:
+## Possible Next Steps
+1. Implement a user interface to input wallet addresses and display token results.
+2. Add comprehensive error checks for API responses to handle failures gracefully.
+3. Define additional features like real-time updates for asset values and historical transaction views.
+4. Enhance functionality with reporting features for asset diversity and historical balance tracking.
 
-- **Account Endpoints**: [Accounts API Endpoints](https://docs.polygonscan.com/api-endpoints/accounts)
-- **Token Endpoints**: [Tokens API Endpoints](https://docs.polygonscan.com/api-endpoints/tokens)
-- **Stats**: [Stats API Endpoints](https://docs.polygonscan.com/api-endpoints/stats)
-- **Error Handling**: [Common Error Messages](https://docs.polygonscan.com/support/common-error-messages)
-- **Rate Limits**: [Rate Limits](https://docs.polygonscan.com/support/rate-limits)
-- **Getting Started**: [Creating an Account](https://docs.polygonscan.com/getting-started/creating-an-account) and [Viewing API Usage Statistics](https://docs.polygonscan.com/getting-started/viewing-api-usage-statistics)
+## Relevant Documentation Pages
+1. [PolygonScan API Documentation](https://docs.polygonscan.com/)
+2. [Accounts API Endpoints](https://docs.polygonscan.com/api-endpoints/accounts)
+3. [Tokens API Endpoints](https://docs.polygonscan.com/api-endpoints/tokens)
+4. [Rate Limits Documentation](https://docs.polygonscan.com/support/rate-limits)
+5. [PolygonScan API Usage Statistics](https://docs.polygonscan.com/getting-started/viewing-api-usage-statistics)
 
-### Conclusion
-This scope document serves as a blueprint for developing an AI agent that can track and manage assets on the Polygon network effectively. Implementing the strategies outlined will provide users with reliable and timely asset information, enabling informed decision-making.
+This scope document lays the groundwork for our Wallet Address Tracker project that will efficiently utilize the PolygonScan API while ensuring a good user experience.

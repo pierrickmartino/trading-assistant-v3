@@ -1,0 +1,33 @@
+import requests
+import os
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+API_URL = "https://api.polygonscan.com/api"
+API_KEY = os.getenv('POLYGONSCAN_API_KEY')
+
+def get_token_transfers(address):
+    print(API_KEY)
+    response = requests.get(API_URL, params={
+        'module': 'account',
+        'action': 'tokentx',
+        'address': address,
+        'apikey': API_KEY
+    })
+    if response.status_code == 200:
+        return response.json().get('result', [])
+    return []
+
+def get_token_balances(address, contract_address):
+    response = requests.get(API_URL, params={
+        'module': 'account',
+        'action': 'tokenbalance',
+        'contractaddress': contract_address,
+        'address': address,
+        'apikey': API_KEY
+    })
+    if response.status_code == 200:
+        return response.json().get('result', '0')
+    return '0'

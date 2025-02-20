@@ -71,9 +71,9 @@ async def run_agent_with_streaming(user_input: str):
 
 
 async def main():
-    st.title("Archon - Agent Builder")
-    st.write("Describe to me an AI agent you want to build and I'll code it for you with Pydantic AI.")
-    st.write("Example: Build me an AI agent that can search the web with the Brave API.")
+    st.title("WATracker - Wallet Address Tracker")
+    st.write("Describe to me a wallet address tracker you want to build and I'll code it for you in python with PolygonScan API.")
+    st.write("Example: Build me a wallet address tracker that can search the Polygon network with the PolygonScan API and give me a list of the different tokens with a total quantity other than 0.")
 
     # Initialize chat history in session state if not present
     if "messages" not in st.session_state:
@@ -87,7 +87,7 @@ async def main():
                 st.markdown(message["content"])    
 
     # Chat input for the user
-    user_input = st.chat_input("What do you want to build today?")
+    user_input = st.chat_input("What address do you want to track today?")
 
     if user_input:
         # We append a new request to the conversation explicitly
