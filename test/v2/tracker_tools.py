@@ -1,5 +1,9 @@
 from polygonscan_api import PolygonscanAPI
 
+def get_token_transactions(api_key, address):
+    api = PolygonscanAPI(api_key)
+    return api.get_token_transactions(address)['result']
+
 def get_non_zero_balances(api_key, address):
     api = PolygonscanAPI(api_key)
 
@@ -11,20 +15,27 @@ def get_non_zero_balances(api_key, address):
     for tx in token_transactions['result']:
         if int(tx['value']) != 0: 
             contract_address = tx['contractAddress']
+            value = int(tx['value'])
+            
             if contract_address not in token_balances:
                 token_balances[contract_address] = {
-                    'balance': int(tx['value']),
+                    'balance': 0,
                     'decimals': int(tx['tokenDecimal']),
                     'transactions_count': 1,
                     'tokenName': tx.get('tokenName', '-'),
                     'tokenSymbol': tx.get('tokenSymbol', '-')
                 }
-            else:
-                token_balances[contract_address]['balance'] += int(tx['value'])
-                token_balances[contract_address]['transactions_count'] += 1
 
-    # Filter out tokens with zero balance
-    non_zero_tokens = {addr: data for addr, data in token_balances.items() if data['balance'] != 0}
+            # Update balance based on transaction direction
+            if tx['from'].lower() == address.lower():
+                token_balances[contract_address]['balance'] -= value
+            else:
+                token_balances[contract_address]['balance'] += value
+
+            token_balances[contract_address]['transactions_count'] += 1
+
+        # Filter out tokens with zero balance or negative balances since they are invalid for this use case.
+        non_zero_tokens = {addr: data for addr, data in token_balances.items() if data['balance'] > 0}
 
     return non_zero_tokens
 
