@@ -45,3 +45,11 @@ def get_token_balances(address, contract_address):
     if response.status_code == 200:
         return response.json().get('result', '0')
     return '0'
+
+def get_token_details(self, contract_address):
+        params = {
+            "module": "token",
+            "action": "info",
+            "contractaddress": contract_address
+        }
+        return self._make_request(**params)
